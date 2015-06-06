@@ -27,8 +27,9 @@ io.on('connection', function(socket) {
   socket.on('new_loc', function(msg) {
     console.log('message: ' + JSON.stringify(msg));
     io.to('ui').emit('new_loc', {
-      deviceId: msg.deviceId,
-      socketId: socket.id
+      deviceId: msg.deviceid,
+      socketId: socket.id,
+      distance: msg.distance
     });
   });
 

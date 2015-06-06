@@ -33,6 +33,7 @@
       if (detector) {
         detector.deviceId = deviceId;
         detector.socketId = socketId;
+        detector.set("fill", '#' + Math.floor(Math.random() * 16777215).toString(16))
       } else {
         detector = new fabric.Circle({
           left: 300,
@@ -45,6 +46,8 @@
         detectors.push(detector);
         canvas.add(detector);
       }
+      canvas.renderAll();
+      return detector;
     }
 
     var findDetector = function(deviceId, socketId) {
@@ -60,7 +63,8 @@
     }
 
     var beacon;
-    var addOrUpdateBeacon = function(distance, detectorId) {
+    var addOrUpdateBeacon = function(distance, detector) {
+      console.log('addOrUpdateBeacon')
       if (!beacon) {
         beacon = new fabric.Circle({
           left: 200,
@@ -69,27 +73,46 @@
           radius: 20,
           distances: []
         });
+        console.log('add beacon')
         canvas.add(beacon);
       } else {
+        var found = false;
         for (var i = 0; i < beacon.distances.length; i++) {
-
+          if (beacon.distances[i].detector == detector) {
+            beacon.distances[i].distance = distance;
+            found = true;
+          }
         }
+        if (!found) {
+          beacon.distances.push({
+            distance: distance,
+            detector: detector
+          });
+        }
+      }
+
+      console.log(beacon)
+      canvas.renderAll();
+    };
+
+    var updateBeaconPosition = function() {
+      for (var i = 0; i < beacon.distances.length - 1; i++) {
+        var dist1 = beacon.distances[i];
+        var dist2 = beacon.distances[i + 1];
+        var distance = calcDistance(dist1.detector, dist2.detector);
+
+        var relativeDistance = distance * (dist1.distance / (dist1.distance + dist2.distance));
+
+        beacon.set("top", Math.abs(dist1.detector.top - dist2.detector.top) * beacon.distances[i]);
+        beacon.set("left", Math.abs(dist1.detector.left - dist2.detector.left) * beacon.distances[i]);
       }
     };
 
     socket.on('new_loc', function(msg) {
       var detector = addOrUpdateDetector(msg.deviceId, msg.socketId);
-      if (detector != null)
-        addOrUpdateBeacon(msg.distance, msg.deviceId);
-    });
+      addOrUpdateBeacon(msg.distance, detector);
 
-    socket.on('disconnect_detector', function(msg) {
-      // var detector = findDetector(null, msg.socketId);
-      // console.log('disconnecting', msg.socketId, detector)
-      // canvas.remove(detector);
-      //
-      // if (detectors.indexOf(detector) > -1)
-      //   detectors.splice(detectors.indexOf(detector), 1);
+      updateBeaconPosition();
     });
 
     socket.emit('ui');
