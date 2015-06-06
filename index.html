@@ -11,41 +11,88 @@
   <script>
     var socket = io();
 
+    var detectors = [];
+
     var load = function() {
       // create a wrapper around native canvas element (with id="c")
-      var canvas = new fabric.Canvas('c');
-      canvas.setHeight(600);
-      canvas.setWidth(800);
+      canvas = new fabric.Canvas('c');
+      canvas.setHeight(700);
+      canvas.setWidth(700);
       canvas.setBackgroundColor("#FFF");
-
-      var detectors = [];
-
-      detectors.push(new fabric.Circle({
-        left: 100,
-        top: 100,
-        fill: 'red',
-        radius: 15
-      }));
-
-      detectors.push(new fabric.Circle({
-        left: 600,
-        top: 100,
-        fill: 'green',
-        radius: 15
-      }));
-
-      detectors.push(new fabric.Circle({
-        left: 350,
-        top: 425,
-        fill: 'blue',
-        radius: 15
-      }));
-
-      for (var i = 0; i < detectors.length; i++) {
-        canvas.add(detectors[i]);
-      }
-
     }
+
+    var calcDistance = function(el1, el2) {
+      var left = Math.abs(el1.left - el2.left);
+      var top = Math.abs(el1.top - el2.top);
+      return Math.sqrt(Math.pow(left, 2) + Math.pow(top, 2));
+    };
+
+    var addOrUpdateDetector = function(deviceId, socketId) {
+      console.log("addOrUpdateDetector", deviceId, socketId);
+      var detector = findDetector(deviceId, socketId);
+      if (detector) {
+        detector.deviceId = deviceId;
+        detector.socketId = socketId;
+      } else {
+        detector = new fabric.Circle({
+          left: 300,
+          top: 300,
+          fill: '#' + Math.floor(Math.random() * 16777215).toString(16),
+          radius: 15,
+          socketId: socketId,
+          deviceId: deviceId
+        });
+        detectors.push(detector);
+        canvas.add(detector);
+      }
+    }
+
+    var findDetector = function(deviceId, socketId) {
+      for (var i = 0; i < detectors.length; i++) {
+        if (detectors[i].deviceId == deviceId) {
+          return detectors[i];
+        } else if (detectors[i].socketId == socketId) {
+          detectors[i].deviceId = deviceId;
+          return detectors[i];
+        }
+      }
+      return false;
+    }
+
+    var beacon;
+    var addOrUpdateBeacon = function(distance, detectorId) {
+      if (!beacon) {
+        beacon = new fabric.Circle({
+          left: 200,
+          top: 200,
+          fill: "black",
+          radius: 20,
+          distances: []
+        });
+        canvas.add(beacon);
+      } else {
+        for (var i = 0; i < beacon.distances.length; i++) {
+
+        }
+      }
+    };
+
+    socket.on('new_loc', function(msg) {
+      var detector = addOrUpdateDetector(msg.deviceId, msg.socketId);
+      if (detector != null)
+        addOrUpdateBeacon(msg.distance, msg.deviceId);
+    });
+
+    socket.on('disconnect_detector', function(msg) {
+      // var detector = findDetector(null, msg.socketId);
+      // console.log('disconnecting', msg.socketId, detector)
+      // canvas.remove(detector);
+      //
+      // if (detectors.indexOf(detector) > -1)
+      //   detectors.splice(detectors.indexOf(detector), 1);
+    });
+
+    socket.emit('ui');
   </script>
 </body>
 
